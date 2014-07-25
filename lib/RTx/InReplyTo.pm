@@ -34,7 +34,7 @@ require RT::Interface::Email;
             map { split /\s+/m, $_ }
             grep defined,
             map { $entity->head->get( $_ ) }
-            @{ RT->Config->Get( 'InReplyTo_Headers' ) };
+            RT->Config->Get( 'InReplyTo_Headers' );
 
         unless (@references) {
             # we didn't find any references in the headers
@@ -42,6 +42,8 @@ require RT::Interface::Email;
             return $prev;
         }
 
+        # run the query with the system user as we want to find the
+        # best match; the gateway will make a permissions check
         my $query = RT::Attachments->new( $RT::SystemUser );
         $query->Limit(
             ENTRYAGGREGATOR => 'AND',
@@ -68,6 +70,9 @@ require RT::Interface::Email;
                 return $prev;
             }
 
+            # there isn't a unique constraint on MessageId
+            # we could potentially get multiple tickets for the same
+            # reference, so we keep them in an array and check later
             push( $matches{ $attachment->MessageId } ||= [], $ticket );
         }
 
